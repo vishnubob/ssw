@@ -59,9 +59,14 @@ class DNA_Matrix(ScoreMatrix):
         return super(DNA_Matrix, self)._get_score(symbol_1, symbol_2)
 
 class Aligner(object):
-    def __init__(self, reference=None, matrix=None, gap_open=3, gap_extend=1):
+    def __init__(self, reference=None, matrix=None, molecule="dna", gap_open=3, gap_extend=1):
         self.reference = reference
         self.matrix = matrix
+        if self.matrix == None and molecule != None:
+            if molecule == "dna":
+                self.matrix = DNA_Matrix()
+            else:
+                raise ValueError, "Unrecognized molecule type '%s'" % molecule
         self.gap_open = gap_open
         self.gap_extend = gap_extend
 
