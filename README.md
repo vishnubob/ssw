@@ -10,8 +10,6 @@ easy to install, high-level python interface with no external library dependanci
 The SSW library is written by Mengyao Zhao and Wan-Ping Lee, and this python
 interface is maintained by Giles Hall.
 
-ssw_repo: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
-
 ## Installation
 
 To install the SSW python package, use pip to install the current master archive:
@@ -39,3 +37,5 @@ ref   1   ACGTGAGAATTATGGCGCTGTGATT
           ||||||||||||| |||||||||||
 query 1   ACGTGAGAATTAT-GCGCTGTGATT
 ```
+
+[ssw_repo]: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
