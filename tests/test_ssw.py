@@ -4,6 +4,17 @@ import unittest
 import ssw
 
 class TestSSW(unittest.TestCase):
+    def test_mixed_case(self):
+        reference = "GTGCGATGTGCGATGAGATC"
+        query = reference.lower()
+        aligner = ssw.Aligner()
+        al = aligner.align(query, reference)
+        self.assertEquals(al.match_count, len(reference))
+        self.assertEquals(al.mismatch_count, 0)
+        self.assertEquals(al.insertion_count, 0)
+        self.assertEquals(al.deletion_count, 0)
+        self.assertEquals(al.cigar, '20M')
+
     def test_perfect_alignment(self):
         reference = "GTGCGATGTGCGATGAGATC"
         query = reference

@@ -156,7 +156,8 @@ class Alignment(object):
                 for (r_base, q_base) in zip(r_seq(op_len), q_seq(op_len)):
                     r_line += r_base
                     q_line += q_base
-                    if r_base == q_base:
+                    # XXX: ambiguity codes? matrix match?
+                    if r_base.upper() == q_base.upper():
                         m_line += '|'
                     else:
                         m_line += '*'
