@@ -2,6 +2,18 @@ import libssw
 
 __all__ = ["ScoreMatrix", "DNA_Matrix", "Aligner", "Alignment"]
 
+def build_compliment_table():
+    cmap = ((ord('G'), ord('C')), (ord('A'), ord('T')))
+    _ctable = [chr(idx) for idx in xrange(0xff + 1)]
+    case_delta = ord('a') - ord('A')
+    for (base1, base2) in cmap:
+        _ctable[base1] = chr(base2)
+        _ctable[base2] = chr(base1)
+        _ctable[base1 + case_delta] = chr(base2 + case_delta)
+        _ctable[base2 + case_delta] = chr(base1 + case_delta)
+    return str.join('', _ctable)
+ComplimentTable = build_compliment_table()
+
 class ScoreMatrix(object):
     def __init__(self, alphabet=None, match=2, mismatch=-2):
         self._match = match
@@ -62,6 +74,7 @@ class Aligner(object):
     def __init__(self, reference=None, matrix=None, molecule="dna", gap_open=3, gap_extend=1):
         self.reference = reference
         self.matrix = matrix
+        self.molecule = molecule
         if self.matrix == None and molecule != None:
             if molecule == "dna":
                 self.matrix = DNA_Matrix()
@@ -70,7 +83,7 @@ class Aligner(object):
         self.gap_open = gap_open
         self.gap_extend = gap_extend
 
-    def align(self, query='', reference=None):
+    def align(self, query='', reference=None, revcomp=True):
         # XXX: I really don't find this part of SSW useful, which
         # is why i broke alignment into two stages, so you can use 
         # the low lever interface if you wish.
@@ -79,7 +92,13 @@ class Aligner(object):
         flags = 1
         mask_length = max(15, len(query) / 2)
         reference = reference if reference != None else self.reference
-        return self._align(query, reference, flags, filter_score, filter_distance, mask_length)
+        res = self._align(query, reference, flags, filter_score, filter_distance, mask_length)
+        if revcomp:
+            query_rc = query[::-1].translate(ComplimentTable)
+            res_rc = self._align(query_rc, reference, flags, filter_score, filter_distance, mask_length)
+            if res_rc.score > res.score:
+                res = res_rc
+        return res
     
     def _align(self, query, reference, flags, filter_score, filter_distance, mask_length, score_size=2): 
         _query = self.matrix.convert_sequence_to_ints(query)
