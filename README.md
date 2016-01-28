@@ -42,3 +42,4 @@ query 1   ACGTGAGAATTAT-GCGCTGTGATT
 ```
 
 [ssw_repo]: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
+
