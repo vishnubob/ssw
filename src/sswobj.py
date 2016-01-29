@@ -1,4 +1,5 @@
 from . import libssw
+import six
 from six.moves import range
 
 __all__ = ["ScoreMatrix", "DNA_ScoreMatrix", "Aligner", "Alignment"]
@@ -91,7 +92,7 @@ class Aligner(object):
         filter_score = 0
         filter_distance = 0
         flags = 1
-        mask_length = max(15, len(query) / 2)
+        mask_length = max(15, len(query) // 2)
         reference = reference if reference != None else self.reference
         res = self._align(query, reference, flags, filter_score, filter_distance, mask_length)
         if revcomp:
@@ -127,7 +128,7 @@ class Alignment(object):
     def iter_cigar(self):
         for val in self._cigar_string:
             op_len = libssw.cigar_int_to_len(val)
-            op_char = libssw.cigar_int_to_op(val)
+            op_char = libssw.cigar_int_to_op(val).decode("latin")
             yield (op_len, op_char)
 
     @property
@@ -135,7 +136,7 @@ class Alignment(object):
         cigar = ""
         if self.query_begin > 0:
             cigar += str(self.query_begin) + "S"
-        cigar += str.join('', [str.join('', map(str, cstr)) for cstr in self.iter_cigar])
+        cigar += str.join('', (str.join('', map(str, cstr)) for cstr in self.iter_cigar))
         end_len = len(self.query) - self.query_end - 1
         if end_len != 0:
             cigar += str(end_len) + "S"
@@ -146,7 +147,7 @@ class Alignment(object):
         def seqiter(seq, start=None, end=None):
             seq = iter(seq[start:end])
             def getseq(cnt):
-                return str.join('', (seq.next() for x in range(cnt)))
+                return str.join('', (next(seq) for x in range(cnt)))
             return getseq
         r_seq = seqiter(self.reference, self.reference_begin, self.reference_end + 1)
         q_seq = seqiter(self.query, self.query_begin, self.query_end + 1)
