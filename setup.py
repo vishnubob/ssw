@@ -38,6 +38,7 @@ config = {
     ],
     "ext_modules": [Extension("_libssw", **libssw_ext)],
     "zip_safe": False,
+    "download_url": "https://github.com/vishnubob/ssw/archive/v0.3.1.tar.gz",
 }
 
 if __name__ == "__main__":
