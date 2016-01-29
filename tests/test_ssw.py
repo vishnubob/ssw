@@ -71,6 +71,7 @@ class TestSSW(unittest.TestCase):
         self.assertEquals(al.cigar, "10M1D9M")
 
     def test_issue_1(self):
+        # https://github.com/vishnubob/ssw/issues/1
         reference = "CCC" + "AGCT" * 10
         query = "AGGT" * 10
         aligner = ssw.Aligner(gap_open=1, gap_extend=1)
