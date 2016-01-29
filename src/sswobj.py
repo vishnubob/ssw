@@ -86,7 +86,7 @@ class Aligner(object):
     def align(self, query='', reference=None, revcomp=True):
         # XXX: I really don't find this part of SSW useful, which
         # is why i broke alignment into two stages, so you can use 
-        # the low lever interface if you wish.
+        # the low level interface if you wish.
         filter_score = 0
         filter_distance = 0
         flags = 1
@@ -115,8 +115,8 @@ class Alignment(object):
         self.score = alignment.contents.score
         self.score2 = alignment.contents.score2
         self.reference = reference
-        self.ref_begin = alignment.contents.ref_begin
-        self.ref_end = alignment.contents.ref_end
+        self.reference_begin = alignment.contents.ref_begin
+        self.reference_end = alignment.contents.ref_end
         self.query = query
         self.query_begin = alignment.contents.query_begin
         self.query_end = alignment.contents.query_end
@@ -142,13 +142,13 @@ class Alignment(object):
 
     @property
     def alignment(self):
-        def seqiter(seq):
-            seq = iter(seq)
+        def seqiter(seq, start=None, end=None):
+            seq = iter(seq[start:end])
             def getseq(cnt):
                 return str.join('', (seq.next() for x in range(cnt)))
             return getseq
-        r_seq = seqiter(self.reference)
-        q_seq = seqiter(self.query)
+        r_seq = seqiter(self.reference, self.reference_begin, self.reference_end + 1)
+        q_seq = seqiter(self.query, self.query_begin, self.query_end + 1)
         r_line = m_line = q_line = ''
         for (op_len, op_char) in self.iter_cigar:
             op_len = int(op_len)
@@ -199,7 +199,6 @@ class Alignment(object):
                 cnt += op_len
         return cnt
 
-    @property
     def alignment_report(self, width=80, header=True):
         def window(lines, width):
             idx = 0
@@ -212,15 +211,15 @@ class Alignment(object):
                 yield (res, idx)
                 idx += width
 
-        margin_width = len(str(max(self.query_end, self.ref_end))) + 8
+        margin_width = len(str(max(self.query_end, self.reference_end))) + 8
         rpt = ''
         if header:
             rpt += "Score = %s, Matches = %s, Mismatches = %s, Insertions = %s, Deletions = %s\n" % (self.score, self.match_count, self.mismatch_count, self.insertion_count, self.deletion_count)
             rpt += '\n'
         for (lines, offset) in window(self.alignment, width - margin_width):
-            for (name, line) in zip(["ref", "", "query"], lines):
+            for (name, seq_offset, line) in zip(["ref", "", "query"], [self.reference_begin, None, self.query_begin], lines):
                 if name:
-                    line_offset = getattr(self, name + "_begin") + offset + 1
+                    line_offset = seq_offset + offset + 1
                     left_margin = "%s %s" % (name.ljust(5), line_offset)
                 else:
                     left_margin = ""

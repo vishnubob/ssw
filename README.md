@@ -33,7 +33,7 @@ Successfully installed ssw-0.1
 import ssw
 aligner = ssw.Aligner()
 alignment = aligner.align(reference="ACGTGAGAATTATGGCGCTGTGATT", query="ACGTGAGAATTATGCGCTGTGATT")
-print(alignment.alignment_report)
+print(alignment.alignment_report())
 Score = 45, Matches = 24, Mismatches = 0, Insertions = 0, Deletions = 1
 
 ref   1   ACGTGAGAATTATGGCGCTGTGATT
