@@ -7,12 +7,29 @@ libssw_ext = {"sources": ["src/ssw/ssw.c"], "include_dirs": ["src/ssw"]}
 config = {
     "name": "ssw", 
     "version": "0.1",
-    "description": "Complete Striped Smith Waterman Library",
-    "author": "Mengyao Zhao et al.",
-    "author_email": "zhaomengyao@gmail.com",
+    "description": "Smith-Waterman Sequence Aligner",
+    "author": "Giles Hall",
+    "author_email": "giles@polymerase.org",
     "package_dir": {"ssw": "src"},
     "packages": ["ssw"],
+    "classifiers": [
+        "Development Status :: 4 - Beta",
+        "License :: OSI Approved :: MIT License",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+    ],
+    "keywords": [
+        "bioinformatics",
+        "sequence alignment",
+        "smith-waterman",
+        "genomics",
+        "proteomics"
+    ],
+    "install_requires": [
+        "six",
+    ],
     "ext_modules": [Extension("libssw", **libssw_ext)],
+    "zip_safe": False,
 }
 
 if __name__ == "__main__":

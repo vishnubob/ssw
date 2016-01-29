@@ -3,16 +3,14 @@ import itertools
 from ctypes import *
 
 def load_ssw_library():
-    relative_path = os.path.split(__file__)[0]
-    paths = [".", ".."]
-    libname = "libssw.so"
-    for path in paths:
-        libpath = os.path.join(relative_path, path, libname)
-        try:
-            return cdll.LoadLibrary(libpath)
-        except OSError:
-            pass
-    # last attempt
+    mod_path = os.path.split(__file__)[0]
+    search_path = os.path.join(mod_path, "..")
+    libname = "_libssw"
+    for (root, dirs, files) in os.walk(search_path):
+        for fn in files:
+            if fn.lower().startswith(libname) and fn.lower().endswith(".so"):
+                libpath = os.path.join(root, fn)
+                return cdll.LoadLibrary(libpath)
     return cdll.LoadLibrary(libname)
 
 # load our library

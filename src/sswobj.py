@@ -1,10 +1,11 @@
-import libssw
+from . import libssw
+from six.moves import range
 
 __all__ = ["ScoreMatrix", "DNA_ScoreMatrix", "Aligner", "Alignment"]
 
 def build_compliment_table():
     cmap = ((ord('G'), ord('C')), (ord('A'), ord('T')))
-    _ctable = [chr(idx) for idx in xrange(0xff + 1)]
+    _ctable = [chr(idx) for idx in range(0xff + 1)]
     case_delta = ord('a') - ord('A')
     for (base1, base2) in cmap:
         _ctable[base1] = chr(base2)
@@ -79,7 +80,7 @@ class Aligner(object):
             if molecule == "dna":
                 self.matrix = DNA_ScoreMatrix()
             else:
-                raise ValueError, "Unrecognized molecule type '%s'" % molecule
+                raise ValueError("Unrecognized molecule type '%s'" % molecule)
         self.gap_open = gap_open
         self.gap_extend = gap_extend
 
