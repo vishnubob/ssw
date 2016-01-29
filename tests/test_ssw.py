@@ -74,12 +74,17 @@ class TestSSW(unittest.TestCase):
         # https://github.com/vishnubob/ssw/issues/1
         reference = "CCC" + "AGCT" * 10
         query = "AGGT" * 10
-        aligner = ssw.Aligner(gap_open=1, gap_extend=1)
+        aligner = ssw.Aligner()
         alignment = aligner.align(query, reference)
         (r_line, m_line, q_line) = alignment.alignment
         self.assertEqual(r_line, "AGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG")
         self.assertEqual(m_line, "||*|||*|||*|||*|||*|||*|||*|||*|||*|||")
         self.assertEqual(q_line, "AGGTAGGTAGGTAGGTAGGTAGGTAGGTAGGTAGGTAG")
+
+    def test_issue_3(self):
+        # https://github.com/vishnubob/ssw/issues/3
+        self.assertRaises(ValueError, ssw.Aligner, gap_open=1, gap_extend=2)
+        self.assertRaises(ValueError, ssw.Aligner, gap_open=1, gap_extend=1)
 
 if __name__ == '__main__':
     unittest.main()

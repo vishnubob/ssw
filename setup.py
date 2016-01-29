@@ -6,7 +6,7 @@ libssw_ext = {"sources": ["src/ssw/ssw.c"], "include_dirs": ["src/ssw"]}
 
 config = {
     "name": "ssw", 
-    "version": "0.1",
+    "version": "0.3.1",
     "description": "Smith-Waterman Sequence Aligner",
     "author": "Giles Hall",
     "author_email": "giles@polymerase.org",

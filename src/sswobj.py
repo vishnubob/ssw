@@ -84,6 +84,8 @@ class Aligner(object):
                 raise ValueError("Unrecognized molecule type '%s'" % molecule)
         self.gap_open = gap_open
         self.gap_extend = gap_extend
+        if self.gap_open <= self.gap_extend:
+            raise ValueError("gap_open must always be greater than gap_extend")
 
     def align(self, query='', reference=None, revcomp=True):
         # XXX: I really don't find this part of SSW useful, which
@@ -106,6 +108,8 @@ class Aligner(object):
         _query = self.matrix.convert_sequence_to_ints(query)
         _reference = self.matrix.convert_sequence_to_ints(reference)
         profile = libssw.ssw_profile_init(_query, len(query), self.matrix._matrix, len(self.matrix.alphabet), score_size)
+        if self.gap_open <= self.gap_extend:
+            raise ValueError("gap_open must always be greater than gap_extend")
         alignment = libssw.ssw_align_init(profile, _reference, len(_reference), self.gap_open, self.gap_extend, flags, filter_score, filter_distance, mask_length) 
         alignment_instance = Alignment(alignment, query, reference)
         libssw.ssw_profile_del(profile)
