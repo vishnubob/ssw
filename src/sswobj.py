@@ -1,6 +1,6 @@
 import libssw
 
-__all__ = ["ScoreMatrix", "DNA_Matrix", "Aligner", "Alignment"]
+__all__ = ["ScoreMatrix", "DNA_ScoreMatrix", "Aligner", "Alignment"]
 
 def build_compliment_table():
     cmap = ((ord('G'), ord('C')), (ord('A'), ord('T')))
@@ -61,14 +61,14 @@ class ScoreMatrix(object):
         seq_generator = (self.symbol_map[symbol.upper()] for symbol in seq)
         return _seq_type(*seq_generator)
 
-class DNA_Matrix(ScoreMatrix):
+class DNA_ScoreMatrix(ScoreMatrix):
     def __init__(self, alphabet='AGTCN', **kw):
-        super(DNA_Matrix, self).__init__(alphabet=alphabet, **kw)
+        super(DNA_ScoreMatrix, self).__init__(alphabet=alphabet, **kw)
 
     def _get_score(self, symbol_1, symbol_2):
         if symbol_1.upper() == 'N' or symbol_2.upper() == 'N':
             return 0
-        return super(DNA_Matrix, self)._get_score(symbol_1, symbol_2)
+        return super(DNA_ScoreMatrix, self)._get_score(symbol_1, symbol_2)
 
 class Aligner(object):
     def __init__(self, reference=None, matrix=None, molecule="dna", gap_open=3, gap_extend=1):
@@ -77,7 +77,7 @@ class Aligner(object):
         self.molecule = molecule
         if self.matrix == None and molecule != None:
             if molecule == "dna":
-                self.matrix = DNA_Matrix()
+                self.matrix = DNA_ScoreMatrix()
             else:
                 raise ValueError, "Unrecognized molecule type '%s'" % molecule
         self.gap_open = gap_open
