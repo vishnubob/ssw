@@ -28,7 +28,7 @@ config = {
     "install_requires": [
         "six",
     ],
-    "ext_modules": [Extension("libssw", **libssw_ext)],
+    "ext_modules": [Extension("_libssw", **libssw_ext)],
     "zip_safe": False,
 }
 
