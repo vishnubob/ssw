@@ -59,9 +59,12 @@ class ScoreMatrix(object):
         return self.mismatch
 
     def convert_sequence_to_ints(self, seq):
+        seq = seq.upper()
         _seq_type = libssw.symbol_type * len(seq)
-        seq_generator = (self.symbol_map[symbol.upper()] for symbol in seq)
-        return _seq_type(*seq_generator)
+        _seq_instance = _seq_type()
+        for (idx, symbol) in enumerate(seq):
+            _seq_instance[idx] = self.symbol_map[symbol]
+        return _seq_instance
 
 class DNA_ScoreMatrix(ScoreMatrix):
     def __init__(self, alphabet='AGTCN', **kw):
