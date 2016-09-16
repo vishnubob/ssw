@@ -151,35 +151,38 @@ class Alignment(object):
 
     @property
     def alignment(self):
-        def seqiter(seq, start=None, end=None):
-            seq = iter(seq[start:end])
-            def getseq(cnt):
-                return str.join('', (next(seq) for x in range(cnt)))
-            return getseq
-        r_seq = seqiter(self.reference, self.reference_begin, self.reference_end + 1)
-        q_seq = seqiter(self.query, self.query_begin, self.query_end + 1)
+        r_index = 0
+        q_index = 0
+        r_seq = self.reference[self.reference_begin: self.reference_end + 1]
+        q_seq = self.query[self.query_begin: self.query_end + 1]
         r_line = m_line = q_line = ''
         for (op_len, op_char) in self.iter_cigar:
             op_len = int(op_len)
             if op_char.upper() == 'M':
-                for (r_base, q_base) in zip(r_seq(op_len), q_seq(op_len)):
-                    r_line += r_base
-                    q_line += q_base
-                    # XXX: ambiguity codes? matrix match?
-                    if r_base.upper() == q_base.upper():
-                        m_line += '|'
-                    else:
-                        m_line += '*'
+                ref_piece = r_seq[r_index: r_index + op_len]
+                query_peace = q_seq[q_index: q_index + op_len]
+                r_line += ref_piece
+                q_line += query_peace
+                match_seq = ''.join(['|' if r_base.upper() == q_base.upper() else '*' for (r_base, q_base) in zip(ref_piece, query_peace)]) # faster with "".join([list of str]) instead of +=
+                    
+                m_line += match_seq
+                r_index += op_len
+                q_index += op_len
+
             elif op_char.upper() == 'I':
                 # insertion into reference
                 r_line += '-' * op_len
                 m_line += ' ' * op_len
-                q_line += q_seq(op_len)
+                q_line += q_seq[q_index: q_index + op_len]
+                #  only query index change
+                q_index += op_len
             elif op_char.upper() == 'D':
                 # deletion from reference
-                r_line += r_seq(op_len)
+                r_line += r_seq[r_index: r_index + op_len]
                 m_line += ' ' * op_len
                 q_line += '-' * op_len
+                #  only ref index change
+                r_index += op_len
         return (r_line, m_line, q_line)
 
     # XXX: all of these count functions are ineffecient
