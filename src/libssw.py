@@ -56,12 +56,12 @@ ssw_align_del.restype = None
 
 # cigar_int_to_len function
 cigar_int_to_len = libssw.cigar_int_to_len
-cigar_int_to_len.argtypes = [c_int32]
-cigar_int_to_len.restype = c_int32
+cigar_int_to_len.argtypes = [c_uint32]
+cigar_int_to_len.restype = c_uint32
 
 # cigar_int_to_op function
 cigar_int_to_op = libssw.cigar_int_to_op
-cigar_int_to_op.argtypes = [c_int32]
+cigar_int_to_op.argtypes = [c_uint32]
 cigar_int_to_op.restype = c_char
 
 # flags

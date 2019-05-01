@@ -2,7 +2,10 @@
 
 from setuptools import setup, Extension
 
-libssw_ext = {"sources": ["src/ssw/ssw.c"], "include_dirs": ["src/ssw"]}
+libssw_ext = {
+    "sources": ["src/ssw/ssw.c"],
+    "include_dirs": ["src/ssw"],
+}
 
 config = {
     "name": "ssw", 
