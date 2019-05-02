@@ -11,6 +11,19 @@ class ScoreMatrix(object):
         self._mismatch = mismatch
         self.alphabet = alphabet
 
+    def __getstate__(self):
+        state = (self._match, self._mismatch, self.alphabet)
+        return state
+
+    def __setstate__(self, state):
+        (self._match, self._mismatch, self.alphabet) = state
+
+    def __eq__(self, other):
+        return \
+            (self._match == other._match) and \
+            (self._mismatch == other._mismatch) and \
+            (self._alphabet == other._alphabet)
+
     def get_mismatch(self):
         return self._mismatch
     def set_mismatch(self, val):
