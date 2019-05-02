@@ -1,9 +1,33 @@
 #!/usr/bin/env python
 
 import unittest
+import pickle
 import ssw
+from ssw import iupac
 
-class TestSSW(unittest.TestCase):
+class TestIUPAC(unittest.TestCase):
+    def test_degen_revcomp(self):
+        test_seq = "AGTCMRYSWKBDHVN"
+        test_seq_rc = "NBDHVMWSRYKGACT"
+        _test_seq_rc = iupac.nucleotide_reverse_complement(test_seq)
+        self.assertEqual(test_seq_rc, _test_seq_rc)
+        _test_seq = iupac.nucleotide_reverse_complement(test_seq_rc)
+        self.assertEqual(test_seq, _test_seq)
+
+class TestPickle(unittest.TestCase):
+    def test_alignment_pickle(self):
+        reference = "GTGCGATGTGCGATGAGATC"
+        query = reference
+        aligner = ssw.Aligner()
+        al = aligner.align(query, reference)
+        orig_dict = al.__dict__.copy()
+        clone = pickle.loads(pickle.dumps(al))
+        clone_dict = clone.__dict__.copy()
+        for key in orig_dict.keys():
+            self.assertIn(key, clone_dict)
+            self.assertEqual(orig_dict[key], clone_dict[key])
+
+class TestAlignment(unittest.TestCase):
     def test_mixed_case(self):
         reference = "GTGCGATGTGCGATGAGATC"
         query = reference.lower()
@@ -69,6 +93,19 @@ class TestSSW(unittest.TestCase):
         self.assertEqual(al.insertion_count, 0)
         self.assertEqual(al.deletion_count, 1)
         self.assertEqual(al.cigar, "10M1D9M")
+
+    def test_degen_alignment(self):
+        # XXX: note, this fails if seq_1 and seq_2 are switched
+        # see: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library/issues/63
+        seq_1 = "AGCGATCACGT"
+        seq_2 = "MRYSWKBDHVN"
+        aligner = ssw.Aligner()
+        al = aligner.align(seq_1, seq_2)
+        self.assertEqual(al.match_count, len(seq_1))
+        self.assertEqual(al.mismatch_count, 0)
+        self.assertEqual(al.insertion_count, 0)
+        self.assertEqual(al.deletion_count, 0)
+        self.assertEqual(al.cigar, '%dM' % len(seq_1))
 
     def test_issue_1(self):
         # https://github.com/vishnubob/ssw/issues/1
