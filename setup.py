@@ -4,6 +4,15 @@ from setuptools import setup, Extension
 
 version = open('VERSION').read().strip()
 download_url = "https://github.com/vishnubob/ssw/archive/v%s.tar.gz" % version
+long_description = \
+"""ssw is a fast implementation of the Smith-Waterman algorithm, which
+uses the Single-Instruction Multiple-Data (SIMD) instructions to parallelize
+the algorithm at the CPU level.  This repository wraps the SSW library into an
+easy to install, high-level python interface with no external library dependancies.
+
+The SSW library is written by Mengyao Zhao and Wan-Ping Lee, and this python
+interface is maintained by Giles Hall.
+"""
 
 libssw_ext = {
     "sources": ["src/ssw/ssw.c"],
@@ -47,6 +56,7 @@ config = {
     "zip_safe": False,
     "download_url": download_url,
     "url": "https://github.com/vishnubob/ssw",
+    "long_description": long_description,
 }
 
 if __name__ == "__main__":
