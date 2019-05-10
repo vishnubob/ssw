@@ -58,6 +58,7 @@ config = {
     "download_url": download_url,
     "url": "https://github.com/vishnubob/ssw",
     "long_description": long_description,
+    "long_description_content_type": "text/x-rst",
 }
 
 if __name__ == "__main__":
