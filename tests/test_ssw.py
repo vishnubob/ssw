@@ -94,6 +94,20 @@ class TestAlignment(unittest.TestCase):
         self.assertEqual(al.deletion_count, 1)
         self.assertEqual(al.cigar, "10M1D9M")
 
+    def test_coverage(self):
+        bplen = 5
+        reference = "GTGCGATGTGCGATGAGATC"
+        query = reference[bplen:bplen*2]
+        aligner = ssw.Aligner()
+        al = aligner.align(query, reference)
+        self.assertEqual(al.match_count, bplen)
+        self.assertEqual(al.mismatch_count, 0)
+        self.assertEqual(al.insertion_count, 0)
+        self.assertEqual(al.deletion_count, 0)
+        self.assertEqual(al.cigar, '%dM' % bplen)
+        self.assertEqual(al.query_coverage, 1.0)
+        self.assertEqual(al.reference_coverage, bplen / len(reference))
+
     def test_degen_alignment(self):
         # XXX: note, this fails if seq_1 and seq_2 are switched
         # see: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library/issues/63

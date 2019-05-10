@@ -139,6 +139,8 @@ class Alignment(object):
         self.query = query
         self.query_begin = alignment.contents.query_begin
         self.query_end = alignment.contents.query_end
+        self.query_coverage = (self.query_end - self.query_begin + 1) / len(self.query)
+        self.reference_coverage = (self.reference_end - self.reference_begin + 1) / len(self.reference)
         self.matrix = matrix
         self._cigar_string = [alignment.contents.cigar[idx] for idx in range(alignment.contents.cigarLen)]
 
