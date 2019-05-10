@@ -15,16 +15,10 @@ interface is maintained by Giles Hall.
 
 ## Installation
 
-To install the SSW python package, use pip to install the current master archive:
+To install the SSW python package, use pip:
 
 ```
-$ pip install https://github.com/vishnubob/ssw/archive/master.zip
-Collecting https://github.com/vishnubob/ssw/archive/master.zip
-Downloading https://github.com/vishnubob/ssw/archive/master.zip
-/ 16kB 661kB/s
-Installing collected packages: ssw
-  Running setup.py install for ssw
-Successfully installed ssw-0.1
+$ pip install ssw
 ```
 
 ## Example Usage
