@@ -1,26 +1,28 @@
-from . import libssw
 import six
 from six.moves import range
+from . import libssw
+from . import iupac
 
-__all__ = ["ScoreMatrix", "DNA_ScoreMatrix", "Aligner", "Alignment"]
-
-def build_compliment_table():
-    cmap = ((ord('G'), ord('C')), (ord('A'), ord('T')))
-    _ctable = [chr(idx) for idx in range(0xff + 1)]
-    case_delta = ord('a') - ord('A')
-    for (base1, base2) in cmap:
-        _ctable[base1] = chr(base2)
-        _ctable[base2] = chr(base1)
-        _ctable[base1 + case_delta] = chr(base2 + case_delta)
-        _ctable[base2 + case_delta] = chr(base1 + case_delta)
-    return str.join('', _ctable)
-ComplimentTable = build_compliment_table()
+__all__ = ["ScoreMatrix", "NucleotideScoreMatrix", "Aligner", "Alignment"]
 
 class ScoreMatrix(object):
     def __init__(self, alphabet=None, match=2, mismatch=-2):
         self._match = match
         self._mismatch = mismatch
         self.alphabet = alphabet
+
+    def __getstate__(self):
+        state = (self._match, self._mismatch, self.alphabet)
+        return state
+
+    def __setstate__(self, state):
+        (self._match, self._mismatch, self.alphabet) = state
+
+    def __eq__(self, other):
+        return \
+            (self._match == other._match) and \
+            (self._mismatch == other._mismatch) and \
+            (self._alphabet == other._alphabet)
 
     def get_mismatch(self):
         return self._mismatch
@@ -55,8 +57,10 @@ class ScoreMatrix(object):
                 yield self._get_score(row_symbol, col_symbol)
 
     def _get_score(self, symbol_1, symbol_2):
-        if symbol_1.upper() == symbol_2.upper(): return self.match
-        return self.mismatch
+        return (self.match if self.test_match(symbol_1, symbol_2) else self.mismatch)
+
+    def test_match(self, symbol_1, symbol_2):
+        return symbol_1.upper() == symbol_2.upper()
 
     def convert_sequence_to_ints(self, seq):
         seq = seq.upper()
@@ -66,14 +70,20 @@ class ScoreMatrix(object):
             _seq_instance[idx] = self.symbol_map[symbol]
         return _seq_instance
 
-class DNA_ScoreMatrix(ScoreMatrix):
-    def __init__(self, alphabet='AGTCN', **kw):
-        super(DNA_ScoreMatrix, self).__init__(alphabet=alphabet, **kw)
+class NucleotideScoreMatrix(ScoreMatrix):
+    def __init__(self, alphabet=None, **kw):
+        alphabet = alphabet if alphabet is not None else iupac.NucleotideAlphabet
+        super(NucleotideScoreMatrix, self).__init__(alphabet=alphabet, **kw)
 
-    def _get_score(self, symbol_1, symbol_2):
-        if symbol_1.upper() == 'N' or symbol_2.upper() == 'N':
-            return 0
-        return super(DNA_ScoreMatrix, self)._get_score(symbol_1, symbol_2)
+    def test_match(self, symbol_1, symbol_2):
+        _sym_1 = symbol_1.upper()
+        _sym_2 = symbol_2.upper()
+        if _sym_1 == _sym_2:
+            return True
+        if _sym_1 in iupac.NucleotideTable:
+            matches = iupac.NucleotideTable[_sym_1]["matches"]
+            return (_sym_2 in matches)
+        return super(NucleotideScoreMatrix, self).test_match(symbol_1, symbol_2)
 
 class Aligner(object):
     def __init__(self, reference=None, matrix=None, molecule="dna", gap_open=3, gap_extend=1):
@@ -82,7 +92,7 @@ class Aligner(object):
         self.molecule = molecule
         if self.matrix == None and molecule != None:
             if molecule == "dna":
-                self.matrix = DNA_ScoreMatrix()
+                self.matrix = NucleotideScoreMatrix()
             else:
                 raise ValueError("Unrecognized molecule type '%s'" % molecule)
         self.gap_open = gap_open
@@ -101,7 +111,7 @@ class Aligner(object):
         reference = reference if reference != None else self.reference
         res = self._align(query, reference, flags, filter_score, filter_distance, mask_length)
         if revcomp:
-            query_rc = query[::-1].translate(ComplimentTable)
+            query_rc = iupac.nucleotide_reverse_complement(query)
             res_rc = self._align(query_rc, reference, flags, filter_score, filter_distance, mask_length)
             if res_rc.score > res.score:
                 res = res_rc
@@ -114,13 +124,13 @@ class Aligner(object):
         if self.gap_open <= self.gap_extend:
             raise ValueError("gap_open must always be greater than gap_extend")
         alignment = libssw.ssw_align_init(profile, _reference, len(_reference), self.gap_open, self.gap_extend, flags, filter_score, filter_distance, mask_length) 
-        alignment_instance = Alignment(alignment, query, reference)
+        alignment_instance = Alignment(alignment, query, reference, self.matrix)
         libssw.ssw_profile_del(profile)
         libssw.ssw_align_del(alignment)
         return alignment_instance
 
 class Alignment(object):
-    def __init__ (self, alignment, query, reference):
+    def __init__ (self, alignment, query, reference, matrix=None):
         self.score = alignment.contents.score
         self.score2 = alignment.contents.score2
         self.reference = reference
@@ -129,6 +139,9 @@ class Alignment(object):
         self.query = query
         self.query_begin = alignment.contents.query_begin
         self.query_end = alignment.contents.query_end
+        self.query_coverage = (self.query_end - self.query_begin + 1) / len(self.query)
+        self.reference_coverage = (self.reference_end - self.reference_begin + 1) / len(self.reference)
+        self.matrix = matrix
         self._cigar_string = [alignment.contents.cigar[idx] for idx in range(alignment.contents.cigarLen)]
 
     @property
@@ -156,7 +169,7 @@ class Alignment(object):
         r_seq = self.reference[self.reference_begin: self.reference_end + 1]
         q_seq = self.query[self.query_begin: self.query_end + 1]
         r_line = m_line = q_line = ''
-        match_flag = lambda rq: '|' if rq[0].upper() == rq[1].upper() else '*'
+        match_flag = lambda rq: '|' if self.matrix.test_match(*rq) else '*'
         for (op_len, op_char) in self.iter_cigar:
             op_len = int(op_len)
             if op_char.upper() == 'M':

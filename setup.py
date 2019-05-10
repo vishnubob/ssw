@@ -2,11 +2,17 @@
 
 from setuptools import setup, Extension
 
-libssw_ext = {"sources": ["src/ssw/ssw.c"], "include_dirs": ["src/ssw"]}
+version = open('VERSION').read().strip()
+download_url = "https://github.com/vishnubob/ssw/archive/v%s.tar.gz" % version
+
+libssw_ext = {
+    "sources": ["src/ssw/ssw.c"],
+    "include_dirs": ["src/ssw"],
+}
 
 config = {
     "name": "ssw", 
-    "version": "0.3.1",
+    "version": version,
     "description": "Smith-Waterman Sequence Aligner",
     "author": "Giles Hall",
     "author_email": "giles@polymerase.org",
@@ -36,9 +42,11 @@ config = {
     "install_requires": [
         "six",
     ],
+    "platforms": "any",
     "ext_modules": [Extension("_libssw", **libssw_ext)],
     "zip_safe": False,
-    "download_url": "https://github.com/vishnubob/ssw/archive/v0.3.1.tar.gz",
+    "download_url": download_url,
+    "url": "https://github.com/vishnubob/ssw",
 }
 
 if __name__ == "__main__":

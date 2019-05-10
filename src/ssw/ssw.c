@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2012-1015 Boston College.
+   Copyright (c) 2012-2015 Boston College.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -23,18 +23,50 @@
    SOFTWARE.
 */
 
-/* Contact: Mengyao Zhao <zhangmp@bc.edu> */
+/* The 2-clause BSD License
+
+   Copyright 2006 Michael Farrar.  
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions are
+   met:
+   
+   1. Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+   
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+   
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+   HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 /*
  *  ssw.c
  *
  *  Created by Mengyao Zhao on 6/22/10.
  *  Copyright 2010 Boston College. All rights reserved.
- *	Version 0.1.4
- *	Last revision by Mengyao Zhao on 06/27/14.
+ *	Version 1.2.4
+ *	Last revision by Mengyao Zhao on 2019-03-04.
  *
+ *  The lazy-F loop implementation was derived from SWPS3, which is
+ *  MIT licensed under ETH Zürich, Institute of Computational Science.
+ *
+ *  The core SW loop referenced the swsse2 implementation, which is
+ *  BSD licensed under Micharl Farrar.
  */
 
+//#include <nmmintrin.h>
 #include <emmintrin.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -83,6 +115,43 @@ struct _profile{
 	int32_t readLen;
 	int32_t n;
 	uint8_t bias;
+};
+
+/* array index is an ASCII character value from a CIGAR, 
+   element value is the corresponding integer opcode between 0 and 8 */
+const uint8_t encoded_ops[] = {
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0,         0,         0,         0,
+	0 /*   */, 0 /* ! */, 0 /* " */, 0 /* # */,
+	0 /* $ */, 0 /* % */, 0 /* & */, 0 /* ' */,
+	0 /* ( */, 0 /* ) */, 0 /* * */, 0 /* + */,
+	0 /* , */, 0 /* - */, 0 /* . */, 0 /* / */,
+	0 /* 0 */, 0 /* 1 */, 0 /* 2 */, 0 /* 3 */,
+	0 /* 4 */, 0 /* 5 */, 0 /* 6 */, 0 /* 7 */,
+	0 /* 8 */, 0 /* 9 */, 0 /* : */, 0 /* ; */,
+	0 /* < */, 7 /* = */, 0 /* > */, 0 /* ? */,
+	0 /* @ */, 0 /* A */, 0 /* B */, 0 /* C */,
+	2 /* D */, 0 /* E */, 0 /* F */, 0 /* G */,
+	5 /* H */, 1 /* I */, 0 /* J */, 0 /* K */,
+	0 /* L */, 0 /* M */, 3 /* N */, 0 /* O */,
+	6 /* P */, 0 /* Q */, 0 /* R */, 4 /* S */,
+	0 /* T */, 0 /* U */, 0 /* V */, 0 /* W */,
+	8 /* X */, 0 /* Y */, 0 /* Z */, 0 /* [ */,
+	0 /* \ */, 0 /* ] */, 0 /* ^ */, 0 /* _ */,
+	0 /* ` */, 0 /* a */, 0 /* b */, 0 /* c */,
+	0 /* d */, 0 /* e */, 0 /* f */, 0 /* g */,
+	0 /* h */, 0 /* i */, 0 /* j */, 0 /* k */,
+	0 /* l */, 0 /* m */, 0 /* n */, 0 /* o */,
+	0 /* p */, 0 /* q */, 0 /* r */, 0 /* s */,
+	0 /* t */, 0 /* u */, 0 /* v */, 0 /* w */,
+	0 /* x */, 0 /* y */, 0 /* z */, 0 /* { */,
+	0 /* | */, 0 /* } */, 0 /* ~ */, 0 /*  */
 };
 
 /* Generate query profile rearrange query sequence & calculate the weight of match/mismatch. */
@@ -134,6 +203,7 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 	 						 uint8_t bias,  /* Shift 0 point to a positive value. */
 							 int32_t maskLen) {
 
+// Put the largest number of the 16 numbers in vm into m.
 #define max16(m, vm) (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 8)); \
 					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 4)); \
 					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 2)); \
@@ -159,7 +229,7 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 	__m128i* pvE = (__m128i*) calloc(segLen, sizeof(__m128i));
 	__m128i* pvHmax = (__m128i*) calloc(segLen, sizeof(__m128i));
 
-	int32_t i, j;
+	int32_t i, j, k;
 	/* 16 byte insertion begin vector */
 	__m128i vGapO = _mm_set1_epi8(weight_gapO);
 
@@ -181,13 +251,10 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 		step = -1;
 	}
 	for (i = begin; LIKELY(i != end); i += step) {
-//fprintf(stderr, "%d", ref[i]);
 		int32_t cmp;
 		__m128i e, vF = vZero, vMaxColumn = vZero; /* Initialize F value to 0.
 							   Any errors to vH values will be corrected in the Lazy_F loop.
 							 */
-//		max16(maxColumn[i], vMaxColumn);
-//		fprintf(stderr, "middle[%d]: %d\n", i, maxColumn[i]);
 
 		__m128i vH = pvHStore[segLen - 1];
 		vH = _mm_slli_si128 (vH, 1); /* Shift the 128-bit value in vH left by 1 byte. */
@@ -202,21 +269,12 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 		for (j = 0; LIKELY(j < segLen); ++j) {
 			vH = _mm_adds_epu8(vH, _mm_load_si128(vP + j));
 			vH = _mm_subs_epu8(vH, vBias); /* vH will be always > 0 */
-	//	max16(maxColumn[i], vH);
-	//	fprintf(stderr, "H[%d]: %d\n", i, maxColumn[i]);
-//	int8_t* t;
-//	int32_t ti;
-//for (t = (int8_t*)&vH, ti = 0; ti < 16; ++ti) fprintf(stderr, "%d\t", *t++);
 
 			/* Get max from vH, vE and vF. */
 			e = _mm_load_si128(pvE + j);
 			vH = _mm_max_epu8(vH, e);
 			vH = _mm_max_epu8(vH, vF);
 			vMaxColumn = _mm_max_epu8(vMaxColumn, vH);
-
-	//	max16(maxColumn[i], vMaxColumn);
-	//	fprintf(stderr, "middle[%d]: %d\n", i, maxColumn[i]);
-//	for (t = (int8_t*)&vMaxColumn, ti = 0; ti < 16; ++ti) fprintf(stderr, "%d\t", *t++);
 
 			/* Save vH values. */
 			_mm_store_si128(pvHStore + j, vH);
@@ -235,39 +293,21 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 			vH = _mm_load_si128(pvHLoad + j);
 		}
 
-		/* Lazy_F loop: has been revised to disallow adjecent insertion and then deletion, so don't update E(i, j), learn from SWPS3 */
-        /* reset pointers to the start of the saved data */
-        j = 0;
-        vH = _mm_load_si128 (pvHStore + j);
+/* Lazy_F loop: has been revised to disallow adjecent insertion and then deletion, so don't update E(i, j), learn from SWPS3 */
+		for (k = 0; LIKELY(k < 16); ++k) {
+			vF = _mm_slli_si128 (vF, 1);
+			for (j = 0; LIKELY(j < segLen); ++j) {
+				vH = _mm_load_si128(pvHStore + j);
+				vH = _mm_max_epu8(vH, vF);
+				vMaxColumn = _mm_max_epu8(vMaxColumn, vH);	// newly added line
+				_mm_store_si128(pvHStore + j, vH);
+				vH = _mm_subs_epu8(vH, vGapO);
+				vF = _mm_subs_epu8(vF, vGapE);
+				if (UNLIKELY(! _mm_movemask_epi8(_mm_cmpgt_epi8(vF, vH)))) goto end;
+			}
+		}
 
-        /*  the computed vF value is for the given column.  since */
-        /*  we are at the end, we need to shift the vF value over */
-        /*  to the next column. */
-        vF = _mm_slli_si128 (vF, 1);
-        vTemp = _mm_subs_epu8 (vH, vGapO);
-		vTemp = _mm_subs_epu8 (vF, vTemp);
-		vTemp = _mm_cmpeq_epi8 (vTemp, vZero);
-		cmp  = _mm_movemask_epi8 (vTemp);
-
-        while (cmp != 0xffff)
-        {
-            vH = _mm_max_epu8 (vH, vF);
-			vMaxColumn = _mm_max_epu8(vMaxColumn, vH);
-            _mm_store_si128 (pvHStore + j, vH);
-            vF = _mm_subs_epu8 (vF, vGapE);
-            j++;
-            if (j >= segLen)
-            {
-                j = 0;
-                vF = _mm_slli_si128 (vF, 1);
-            }
-            vH = _mm_load_si128 (pvHStore + j);
-
-            vTemp = _mm_subs_epu8 (vH, vGapO);
-            vTemp = _mm_subs_epu8 (vF, vTemp);
-            vTemp = _mm_cmpeq_epi8 (vTemp, vZero);
-            cmp  = _mm_movemask_epi8 (vTemp);
-        }
+end:		
 
 		vMaxScore = _mm_max_epu8(vMaxScore, vMaxColumn);
 		vTemp = _mm_cmpeq_epi8(vMaxMark, vMaxScore);
@@ -290,11 +330,8 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 
 		/* Record the max score of current column. */
 		max16(maxColumn[i], vMaxColumn);
-	//	fprintf(stderr, "maxColumn[%d]: %d\n", i, maxColumn[i]);
 		if (maxColumn[i] == terminate) break;
 	}
-
-//fprintf(stderr, "\n");
 
 	/* Trace the alignment ending position on read. */
 	uint8_t *t = (uint8_t*)pvHmax;
@@ -324,7 +361,6 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 
 	edge = (end_ref - maskLen) > 0 ? (end_ref - maskLen) : 0;
 	for (i = 0; i < edge; i ++) {
-//			fprintf (stderr, "maxColumn[%d]: %d\n", i, maxColumn[i]);
 		if (maxColumn[i] > bests[1].score) {
 			bests[1].score = maxColumn[i];
 			bests[1].ref = i;
@@ -332,7 +368,6 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 	}
 	edge = (end_ref + maskLen) > refLen ? refLen : (end_ref + maskLen);
 	for (i = edge + 1; i < refLen; i ++) {
-//			fprintf (stderr, "refLen: %d\tmaxColumn[%d]: %d\n", refLen, i, maxColumn[i]);
 		if (maxColumn[i] > bests[1].score) {
 			bests[1].score = maxColumn[i];
 			bests[1].ref = i;
@@ -608,7 +643,6 @@ static cigar* banded_sw (const int8_t* ref,
 				temp1 = i == 0 ? -weight_gapO : h_b[e] - weight_gapO;
 				temp2 = i == 0 ? -weight_gapE : e_b[e] - weight_gapE;
 				e_b[u] = temp1 > temp2 ? temp1 : temp2;
-				//fprintf(stderr, "de: %d\twidth_d: %d\treadLen: %d\ts2:%d\n", de, width_d, readLen, s2);
 				direction_line[de] = temp1 > temp2 ? 3 : 2;
 
 				temp1 = h_c[b] - weight_gapO;
@@ -640,7 +674,7 @@ static cigar* banded_sw (const int8_t* ref,
 	l = 0;	// record length of current cigar
 	op = prev_op = 'M';
 	temp2 = 2;	// h
-	while (LIKELY(i > 0)) {
+	while (LIKELY(i > 0) || LIKELY(j > 0)) {
 		set_d(temp1, band_width, i, j, temp2);
 		switch (direction_line[temp1]) {
 			case 1:
@@ -823,7 +857,6 @@ s_align* ssw_align (const s_profile* prof,
 	}
 	r->score1 = bests[0].score;
 	r->ref_end1 = bests[0].ref;
-//fprintf(stderr, "0based ref_end: %d\n", r->ref_end1);
 	r->read_end1 = bests[0].read;
 	if (maskLen >= 15) {
 		r->score2 = bests[1].score;
@@ -875,30 +908,95 @@ void align_destroy (s_align* a) {
 	free(a);
 }
 
-char cigar_int_to_op (uint32_t cigar_int)
-{
-	uint8_t letter_code = cigar_int & 0xfU;
-	static const char map[] = {
-		'M',
-		'I',
-		'D',
-		'N',
-		'S',
-		'H',
-		'P',
-		'=',
-		'X',
-	};
-
-	if (letter_code >= (sizeof(map)/sizeof(map[0]))) {
-		return 'M';
+uint32_t* add_cigar (uint32_t* new_cigar, int32_t* p, int32_t* s, uint32_t length, char op) {
+	if ((*p) >= (*s)) {
+		++(*s);
+		kroundup32(*s);
+		new_cigar = (uint32_t*)realloc(new_cigar, (*s)*sizeof(uint32_t));
 	}
-
-	return map[letter_code];
+	new_cigar[(*p) ++] = to_cigar_int(length, op);
+	return new_cigar;
 }
 
-uint32_t cigar_int_to_len (uint32_t cigar_int)
-{
-	uint32_t res = cigar_int >> 4;
-	return res;
+uint32_t* store_previous_m (int8_t choice,	// 0: current not M, 1: current match, 2: current mismatch
+					   uint32_t* length_m,
+					   uint32_t* length_x,
+					   int32_t* p,
+					   int32_t* s,
+					   uint32_t* new_cigar) {
+
+	if ((*length_m) && (choice == 2 || !choice)) {
+		new_cigar = add_cigar (new_cigar, p, s, (*length_m), '='); 
+		(*length_m) = 0;
+	} else if ((*length_x) && (choice == 1 || !choice)) { 
+		new_cigar = add_cigar (new_cigar, p, s, (*length_x), 'X'); 
+		(*length_x) = 0;
+	}
+	return new_cigar;
+}				
+
+/*! @function:
+     1. Calculate the number of mismatches.
+     2. Modify the cigar string:
+         differentiate matches (=) and mismatches(X); add softclip(S) at the beginning and ending of the original cigar.
+    @return:
+     The number of mismatches.
+	 The cigar and cigarLen are modified.
+*/
+int32_t mark_mismatch (int32_t ref_begin1,
+					   int32_t read_begin1,
+					   int32_t read_end1,
+					   const int8_t* ref,
+					   const int8_t* read,
+					   int32_t readLen,
+					   uint32_t** cigar,
+					   int32_t* cigarLen) {
+
+	int32_t mismatch_length = 0, p = 0, i, length, j, s = *cigarLen + 2;
+	uint32_t *new_cigar = (uint32_t*)malloc(s*sizeof(uint32_t)), length_m = 0,  length_x = 0;
+	char op;
+
+	ref += ref_begin1;
+	read += read_begin1;
+	if (read_begin1 > 0) new_cigar[p ++] = to_cigar_int(read_begin1, 'S');
+	for (i = 0; i < (*cigarLen); ++i) {
+		op = cigar_int_to_op((*cigar)[i]);
+		length = cigar_int_to_len((*cigar)[i]);
+		if (op == 'M') {
+			for (j = 0; j < length; ++j) {
+				if (*ref != *read) {
+					++ mismatch_length;
+					// the previous is match; however the current one is mismatche
+					new_cigar = store_previous_m (2, &length_m, &length_x, &p, &s, new_cigar);			
+					++ length_x;
+				} else {
+					// the previous is mismatch; however the current one is matche
+					new_cigar = store_previous_m (1, &length_m, &length_x, &p, &s, new_cigar);			
+					++ length_m;
+				}
+				++ ref;
+				++ read;
+			}
+		}else if (op == 'I') {
+			read += length;
+			mismatch_length += length;
+			new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);			
+			new_cigar = add_cigar (new_cigar, &p, &s, length, 'I'); 
+		}else if (op == 'D') {
+			ref += length;
+			mismatch_length += length;
+			new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);			
+			new_cigar = add_cigar (new_cigar, &p, &s, length, 'D'); 
+		}
+	}
+	new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);
+	
+	length = readLen - read_end1 - 1;
+	if (length > 0) new_cigar = add_cigar(new_cigar, &p, &s, length, 'S');
+	
+	(*cigarLen) = p;	
+	free(*cigar);
+	(*cigar) = new_cigar;
+	return mismatch_length;
 }
+
