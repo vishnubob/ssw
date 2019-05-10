@@ -9,7 +9,7 @@ libssw_ext = {
 
 config = {
     "name": "ssw", 
-    "version": "0.3.1",
+    "version": "0.4.1",
     "description": "Smith-Waterman Sequence Aligner",
     "author": "Giles Hall",
     "author_email": "giles@polymerase.org",
