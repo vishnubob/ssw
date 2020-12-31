@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/vishnubob/ssw.svg?branch=master)](https://travis-ci.org/vishnubob/ssw)
 [![Coverage Status](https://coveralls.io/repos/vishnubob/ssw/badge.svg?branch=master&service=github)](https://coveralls.io/github/vishnubob/ssw?branch=master)
 
-#SSW: A Python Wrapper for the SIMD Smith-Waterman
+# SSW: A Python Wrapper for the SIMD Smith-Waterman
 
 ## Overview
 
