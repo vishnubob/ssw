@@ -137,5 +137,13 @@ class TestAlignment(unittest.TestCase):
         self.assertRaises(ValueError, ssw.Aligner, gap_open=1, gap_extend=2)
         self.assertRaises(ValueError, ssw.Aligner, gap_open=1, gap_extend=1)
 
+    def test_seg_fault(self):
+        #https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library/issues/70
+        #causes segfault in older version of ssw
+        aligner = ssw.Aligner()
+        aligner.align("GATTGAAAAACTCCCAGGCTGGACACGGTGGCCCATGCCTGTAATCCCAGCACTCTGGGAGGCTGAGGTGGGCTGATCCCTTGAGGTCAGGAGTTCGAGACCATCCTGGAAAATGTGGCA",
+                   "AAAGGTGACCGGGCACGGTGGCCCATGCCTATAATCCCAGCACTTTGGGAGGCCCAGGCAGGTGGATCACTTGAGGTCAGGAGTTCGAGACCAGCCTGGC")
+        self.assertEqual(1,1)
+        
 if __name__ == '__main__':
     unittest.main()
